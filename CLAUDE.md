@@ -35,7 +35,7 @@ Never put a real person's shopping list in the code (the history was rewritten o
 
 **Classification & dedupe** — `guessKey` maps text to a rayon using `CAT_DEFS` keyword lists, `PHRASES` overrides, and learning from existing items' first word. Duplicate detection (`coreKey` → strips quantities/units/packaging/stopwords/parentheses; `tokEq` with Levenshtein; `compareCore` → same/less/more; `bestMatch`) is shared by the add field and the paste preview (`parsePaste`, `updatePastePreview`, per-line choices in `pasteChoice`).
 
-**UI** — `render()` rebuilds the list from `doc` + `prefs` (current shop filter, search query from the add field, collapsed rayons). Menu/chip buttons dispatch through the `ACTIONS` map via `data-act` attributes; modals are `.modal` elements toggled with `open(id)`/`closeAll()`. `finishCourse()` moves done items back to the catalogue (`need:false`) and keeps missing/unchecked ones on the list.
+**UI** — `render()` rebuilds the list from `doc` + `prefs` (current shop filter, search query from the add field, collapsed rayons). Menu/chip buttons dispatch through the `ACTIONS` map via `data-act` attributes; modals are `.modal` elements toggled with `open(id)`/`closeAll()`, which also push/pop a `{m:1}` history entry so the phone's back button closes the modal (keep `history.state` in any `replaceState`). `finishCourse()` moves done items back to the catalogue (`need:false`) and keeps missing/unchecked ones on the list.
 
 **Service worker** — network-first with `cache: "no-cache"`, cache fallback offline, and bypasses any URL with a query string (that's what makes the version check reliable).
 

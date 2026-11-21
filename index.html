@@ -238,7 +238,7 @@ mark{background:var(--hl);color:inherit;border-radius:3px}
 
 <script>
 /* Version de l'appli : à changer à chaque mise en ligne (affiche « Nouvelle version » chez les autres). */
-const APP_VERSION = "2026-11-21.5";
+const APP_VERSION = "2026-11-21.6";
 
 /* ====== LISTE D'EXEMPLE (proposée au premier lancement) : [emoji, rayon, [articles]] ====== */
 const EXAMPLE = [
@@ -734,8 +734,18 @@ $("addForm").addEventListener("submit", e=>{
 $("hideBtn").onclick = ()=>{ prefs.hideDone = !prefs.hideDone; savePrefs(); render(); toast(prefs.hideDone ? "Articles pris masqués" : "Articles pris affichés"); };
 
 /* ---------- Modales ---------- */
-function open(id){ $(id).classList.add("show"); }
-function closeAll(){ document.querySelectorAll(".modal").forEach(m=>m.classList.remove("show")); }
+/* Bouton retour du téléphone : chaque fenêtre ouverte ajoute une étape dans l'historique (même adresse),
+   « retour » ferme la fenêtre au lieu de quitter l'appli. Fermer par un bouton retire cette étape. */
+let popPending = false;
+const anyModal = () => !!document.querySelector(".modal.show");
+const guarded = () => !!(history.state && history.state.m);
+function hideModals(){ document.querySelectorAll(".modal").forEach(m=>m.classList.remove("show")); }
+function open(id){ $(id).classList.add("show"); if(!popPending && !guarded()) history.pushState({m:1}, ""); }
+function closeAll(){ hideModals(); if(guarded() && !popPending){ popPending = true; history.back(); } }
+window.addEventListener("popstate", ()=>{
+  if(popPending){ popPending = false; if(anyModal() && !guarded()) history.pushState({m:1}, ""); return; } // retour demandé par closeAll
+  if(anyModal()) hideModals(); // retour du téléphone : on ferme la fenêtre
+});
 document.addEventListener("click", e=>{ if(e.target.closest("[data-close]")) closeAll(); });
 document.querySelectorAll(".modal").forEach(m=>m.addEventListener("click",e=>{ if(e.target===m) closeAll(); }));
 $("menuBtn").onclick = ()=>{ updateWakeLabel(); open("menuModal"); };
@@ -1347,7 +1357,7 @@ let joining = false, joinPrev = null;
 const hid = hashId();
 if(hid && hid !== syncId){ joinPrev = syncId; syncId = hid; joining = true; ls.set(SYNC_KEY, syncId); }
 const shareUrl = () => location.origin + location.pathname + "#l=" + syncId;
-function setHash(){ if(syncId && hashId()!==syncId) history.replaceState(null, "", "#l=" + syncId); }
+function setHash(){ if(syncId && hashId()!==syncId) history.replaceState(history.state, "", "#l=" + syncId); }
 
 let syncState = "", syncing = false, again = false, syncTimer = null;
 function setStatus(s, err){
@@ -1376,7 +1386,7 @@ async function sync(){
       /* lien erroné : on n'envoie pas notre liste à cette adresse, on revient à la situation d'avant */
       joining = false; syncId = joinPrev; joinPrev = null;
       if(syncId) ls.set(SYNC_KEY, syncId); else ls.del(SYNC_KEY);
-      history.replaceState(null, "", location.pathname + (syncId ? "#l=" + syncId : ""));
+      history.replaceState(history.state, "", location.pathname + (syncId ? "#l=" + syncId : ""));
       live(); render();
       setTimeout(()=>alert("Liste partagée introuvable : vérifie le lien reçu (il est peut-être incomplet)."), 0);
       if(syncId) again = true; else { setStatus(""); return; }
@@ -1467,7 +1477,7 @@ function renderShare(){
     $("doSync").onclick = async ()=>{ await sync(); $("syncInfo").textContent = syncState; toast(syncState); };
     $("doLeave").onclick = ()=>{
       if(!confirm("Arrêter la synchronisation sur cet appareil ?")) return;
-      syncId = null; ls.del(SYNC_KEY); live(); history.replaceState(null, "", location.pathname); setStatus(""); closeAll(); render();
+      syncId = null; ls.del(SYNC_KEY); live(); history.replaceState(history.state, "", location.pathname); setStatus(""); closeAll(); render();
     };
   }
 }

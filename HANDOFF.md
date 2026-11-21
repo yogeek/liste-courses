@@ -8,7 +8,7 @@ Journal de passation entre sessions Claude. **À lire en début de session, à m
 - Flux git : développer sur la branche de session, pousser sur cette branche **et** sur `main` (GitHub Pages publie `main`). Toujours bumper `APP_VERSION`.
 
 ## État actuel (2026-11-21)
-- En ligne : https://yogeek.github.io/liste-courses/ — `APP_VERSION = "2026-11-21.5"`, SW `courses-v8`.
+- En ligne : https://yogeek.github.io/liste-courses/ — `APP_VERSION = "2026-11-21.6"`, SW `courses-v8`.
 - Partage via Firebase RTDB (`DB_URL` dans `index.html`), temps réel SSE + polling 15 s. Un lien de partage familial est déjà utilisé en production : **ne jamais casser le format `#l=<id>` ni le schéma du doc** (sinon prévoir une migration dans `normalize`/`cleanX`).
 - Historique git réécrit le 2026-11-21 pour purger une liste personnelle (commit unique `7089723`). Si suppression totale voulue : demande au support GitHub (« Remove sensitive data ») pour les anciens SHA `30a4c07`, `5e392f1`, `5c115fe` — laissé à l'utilisateur.
 
@@ -35,6 +35,7 @@ Journal de passation entre sessions Claude. **À lire en début de session, à m
 - **Gérer les rayons** (v`.3`, demandé par le propriétaire) : Menu ⋯ → 🗂 Rayons : monter/descendre (renumérote `o`), renommer + emoji, ajouter, supprimer (articles → « Divers »). Un rayon renommé garde sa clé de rangement auto dans le champ optionnel `k` des rayons (`catForKey` cherche d'abord `k`, sinon le nom), sinon l'ancien rayon serait recréé au prochain ajout.
 - **Ordre des rayons par magasin** (v`.4`) : dans 🗂 Rayons, onglets « Par défaut » + un par magasin (ouvert sur le magasin courant). Un magasin réglé porte `co = {idRayon: rang}` (champ optionnel du magasin, absent = ordre par défaut, ↩️ pour y revenir) ; `catsFor(shopId)` donne l'ordre utilisé par la liste et le catalogue ; un rayon absent de `co` va à la fin. Nom/emoji/ajout/suppression restent communs à tous les magasins.
 - **Glisser les rayons dans la liste** (v`.5`, demandé) : appui long (0,45 s) sur un titre de rayon puis glisser → mode `body.reorder` (rayons repliés, ☰), dépôt = `setCatOrder(prefs.shop, …)` (ordre du magasin courant, ou par défaut en vue « tous »), annulable. Appui long sans glisser → fiche du rayon (renommer, supprimer, tous les rayons). Événements tactiles (touchmove non passif pour bloquer le défilement) + souris sur ordinateur ; `render()` est différé pendant un glisser. Test Playwright : `Input.dispatchTouchEvent` via CDP (Chrome ignore les déplacements < ~15 px).
+- **Bouton retour du téléphone** (v`.6`, demandé) : ouvrir une fenêtre (`open`) ajoute une étape d'historique `{m:1}` à la même adresse ; « retour » la ferme au lieu de quitter l'appli ; `closeAll()` retire l'étape (`history.back()` + `popPending`). Tout `history.replaceState` doit conserver `history.state` (sinon l'étape est perdue).
 
 ## À vérifier / en attente côté utilisateur
 - Passer **Settings → Pages → Source** sur « GitHub Actions » (sinon Pages continue de publier toute la branche), puis relancer le workflow « Publication de l'appli » si son premier passage a échoué. Vérifier ensuite que `/HANDOFF.md` renvoie 404 et que l'appli marche.
@@ -55,6 +56,7 @@ Journal de passation entre sessions Claude. **À lire en début de session, à m
 - Toute modification hors `touch()` casse la fusion entre appareils.
 
 ## Journal des sessions
+- **2026-11-21 (retour)** : bouton retour Android ferme la fenêtre ouverte au lieu de quitter.
 - **2026-11-21 (glisser)** : appui long + glisser des rayons directement dans la liste.
 - **2026-11-21 (ordre par magasin)** : ordre des rayons propre à chaque magasin.
 - **2026-11-21 (rayons)** : écran 🗂 Rayons (ordre, noms, ajout, suppression).
