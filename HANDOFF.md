@@ -8,7 +8,7 @@ Journal de passation entre sessions Claude. **À lire en début de session, à m
 - Flux git : développer sur la branche de session, pousser sur cette branche **et** sur `main` (GitHub Pages publie `main`). Toujours bumper `APP_VERSION`.
 
 ## État actuel (2026-11-21)
-- En ligne : https://yogeek.github.io/liste-courses/ — `APP_VERSION = "2026-11-21.1"`, SW `courses-v8`.
+- En ligne : https://yogeek.github.io/liste-courses/ — `APP_VERSION = "2026-11-21.2"`, SW `courses-v8`.
 - Partage via Firebase RTDB (`DB_URL` dans `index.html`), temps réel SSE + polling 15 s. Un lien de partage familial est déjà utilisé en production : **ne jamais casser le format `#l=<id>` ni le schéma du doc** (sinon prévoir une migration dans `normalize`/`cleanX`).
 - Historique git réécrit le 2026-11-21 pour purger une liste personnelle (commit unique `7089723`). Si suppression totale voulue : demande au support GitHub (« Remove sensitive data ») pour les anciens SHA `30a4c07`, `5e392f1`, `5c115fe` — laissé à l'utilisateur.
 
@@ -22,16 +22,27 @@ Journal de passation entre sessions Claude. **À lire en début de session, à m
 - Doublons souples (quantités, précisions, fautes de frappe) dans l'ajout et l'aperçu du collage, avec choix par ligne.
 - `CLAUDE.md` + ce fichier.
 - Publication Pages par GitHub Actions (`.github/workflows/pages.yml`) : seuls les fichiers de l'appli sont en ligne.
+- Revue complète (2026-11-21, v`.2`), bugs corrigés :
+  - **Envoi inutile à chaque synchro** : Firebase renvoie les clés triées, l'appareil non → la comparaison voyait toujours une différence et renvoyait toute la liste (toutes les 15 s, par chaque appareil). Comparaison désormais à clés triées (`stable`).
+  - **« Annuler » écrasait les changements des autres** faits entre-temps (articles ajoutés par un autre supprimés, coches perdues) : `restore` ne revient plus que sur les éléments modifiés par l'action.
+  - Annuler un ajout / « Tout ajouter » (💡) / coller une liste pouvaient agir sur une copie périmée après une synchro → recherche par id.
+  - Lien de partage erroné/incomplet : la liste locale était envoyée à cette adresse inconnue. Maintenant : message, retour à la situation précédente ; ids hors 16–40 caractères refusés.
+  - Temps réel : la connexion SSE n'était jamais recréée si le navigateur l'avait fermée définitivement.
+  - Magasin sélectionné supprimé sur un autre appareil → liste vide « Rien à acheter » ; retour à « tous ».
+  - Catalogue : champ de filtre recréé à chaque lettre (clavier qui se ferme sur iPhone) ; articles d'un rayon inconnu invisibles.
+  - Recherche « ??? » affichait tout ; emojis de rayons/magasins (données partagées) non échappés dans le HTML.
 
 ## À vérifier / en attente côté utilisateur
 - Passer **Settings → Pages → Source** sur « GitHub Actions » (sinon Pages continue de publier toute la branche), puis relancer le workflow « Publication de l'appli » si son premier passage a échoué. Vérifier ensuite que `/HANDOFF.md` renvoie 404 et que l'appli marche.
 - Les **règles Firebase** du README (avec le chemin `avis`) doivent être publiées par l'utilisateur dans la console. Symptôme si mal collées : « ⚠️ accès refusé (règles) » en haut à droite → lui demander ce qu'il a collé.
 - Retours des familles testeuses (lire `/avis` dans la console Firebase).
 
-## Idées proposées, non lancées (attendre son feu vert)
-- Recherche toujours sur tous les magasins, avec badge du magasin sur les résultats.
-- **Lot 2** : ordre des rayons appris d'après l'ordre réel des coches ; « mode magasin » (gros boutons, rayon courant) ; « qui prend quoi » (attribuer un article à une personne).
-- **Lot 3** : backend Cloudflare (Workers/D1) à la place de Firebase ; scan code-barres + Open Food Facts ; saisie vocale / IA ; tags NFC ; notifications push.
+## Idées proposées, non lancées (attendre son feu vert) — priorités revues le 2026-11-21
+1. **Gérer les rayons** (renommer, réordonner ↑↓, ajouter, supprimer) : aujourd'hui impossible alors que l'ordre des rayons est la base de l'appli. À faire **avant** l'« ordre appris », qui en dépend et qui est plus risqué (ordre qui bouge tout seul = déroutant).
+2. **Recherche sur tous les magasins** avec badge du magasin : quasi-bug actuel (en vue « Bio », taper « lait » dit « Déjà sur la liste » mais ne le montre pas).
+3. **Filets de sécurité** : copie locale avant de rejoindre une liste (rejoindre remplace la liste de l'appareil) ; règle Firebase `newData.exists()` pour qu'aucune écriture ne puisse effacer une liste ; à terme, écriture conditionnelle (ETag Firebase) pour fermer la petite fenêtre où deux envois simultanés s'écrasent (aujourd'hui rattrapée à la synchro suivante).
+4. Lot 2 restant : « qui prend quoi » → attendre une demande des familles. « Mode magasin » → probablement superflu (👁 masquer + replier les rayons existent) ; à réévaluer avec les retours.
+5. Lot 3 revu : **backend Cloudflare déconseillé** tant que l'offre gratuite Firebase suffit (largement pour quelques familles) ; **saisie vocale abandonnée** (la dictée du clavier iOS/Android le fait déjà) ; **NFC abandonné** ; scan code-barres faible valeur pour une liste de courses ; notifications push coûteuses (SDK + appli installée sur iPhone) → seulement si demandé.
 
 ## Pièges connus
 - Firebase supprime les tableaux vides et peut renvoyer des tableaux sous forme d'objets → passer par `arr()` / `cleanDoc`.
@@ -40,4 +51,5 @@ Journal de passation entre sessions Claude. **À lire en début de session, à m
 - Toute modification hors `touch()` casse la fusion entre appareils.
 
 ## Journal des sessions
+- **2026-11-21 (revue)** : revue complète, 9 bugs corrigés (voir « Fait »), priorités revues ; tests Playwright avec un faux Firebase qui trie les clés.
 - **2026-11-20 → 21** : création du projet, lots 0–1, Firebase, activité, mise à jour auto, ouverture multi-familles, doublons, purge de l'historique, CLAUDE.md/HANDOFF.md, publication de l'appli seule via Actions.

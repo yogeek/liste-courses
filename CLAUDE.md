@@ -14,7 +14,7 @@ Other files: `sw.js` (service worker), `manifest.json` + icons (PWA), `.nojekyll
 
 - Serve locally: `python3 -m http.server 8765` then open `http://localhost:8765/`.
 - There is no test suite in the repo. Changes are verified with ad-hoc Playwright scripts (iPhone 13 emulation). Conventions that make that work:
-  - Firebase is not reachable from the sandbox: serve a copy of `index.html` with `DB_URL` rewritten to a fake host and fulfil `GET`/`PUT /listes/<id>.json` from an in-memory store via `context.route`; answer `Accept: text/event-stream` requests with a keep-alive event. Strip empty arrays/nulls from PUT bodies to mimic Firebase.
+  - Firebase is not reachable from the sandbox: serve a copy of `index.html` with `DB_URL` rewritten to a fake host and fulfil `GET`/`PUT /listes/<id>.json` from an in-memory store via `context.route`; answer `Accept: text/event-stream` requests with a keep-alive event. Strip empty arrays/nulls from PUT bodies and **sort object keys** in the stored data to mimic Firebase (a key-order-sensitive comparison caused useless PUTs on every sync; comparisons go through `stable()`).
   - A fresh profile shows the welcome + guide modals; skip them with an init script setting `localStorage.courses_v2_prefs = {"welcomed":true,"guided":true}`, and populate with `addExample(doc); commit()`.
   - Multi-device scenarios = several browser contexts sharing the mocked store; call `sync()` to force a round-trip instead of waiting for `POLL_MS`.
   - Watch `pageerror` events; all inputs must stay at 16px font (iOS zoom).
