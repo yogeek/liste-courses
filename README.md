@@ -10,7 +10,7 @@ Appli web mobile (un seul `index.html`, sans dépendance) publiée sur GitHub Pa
 - ⚠️ **Pas trouvé** : reste sur la liste pour la prochaine fois, ou bascule vers un autre magasin
 - 🏪 **Magasins** : supermarché, bio, bricolage… la liste n'affiche que ce qu'on trouve là où on est
 - 📋 **Coller une liste** : texte libre ou « [ ] article », rangé automatiquement par rayon ; doublons détectés malgré quantités, précisions et fautes de frappe, ressemblances proposées, lignes décochables
-- 👥 **Liste partagée** : un lien à envoyer, tout le monde coche la même liste (synchro toutes les 5 s, fusion article par article, marche hors ligne)
+- 👥 **Liste partagée** : un lien à envoyer, tout le monde coche la même liste (synchro en temps réel, vérification toutes les 15 s en secours, fusion article par article, marche hors ligne)
 - 🔔 **Activité** : notification quand quelqu'un d'autre modifie la liste (« Maman a pris Yaourts ») et historique des derniers changements
 - 🆕 **Mises à jour** : bandeau « Nouvelle version → Mettre à jour » (penser à changer `APP_VERSION` à chaque mise en ligne)
 - Écran toujours allumé, installable sur l'écran d'accueil
