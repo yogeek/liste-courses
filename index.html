@@ -230,7 +230,7 @@ mark{background:var(--hl);color:inherit;border-radius:3px}
 
 <script>
 /* Version de l'appli : à changer à chaque mise en ligne (affiche « Nouvelle version » chez les autres). */
-const APP_VERSION = "2026-11-21.3";
+const APP_VERSION = "2026-11-21.4";
 
 /* ====== LISTE D'EXEMPLE (proposée au premier lancement) : [emoji, rayon, [articles]] ====== */
 const EXAMPLE = [
@@ -403,6 +403,14 @@ const mainShop = () => (liveShops()[0]||{}).id || "";
 const shopOf = i => { const s = i.shop; return s && liveShops().some(x=>x.id===s) ? s : mainShop(); };
 const inShop = i => !prefs.shop || shopOf(i) === prefs.shop;
 const curShop = () => liveShops().find(s=>s.id===prefs.shop);
+/* Ordre des rayons : propre à un magasin (shop.co = {idRayon: rang}) s'il a été réglé, sinon l'ordre par défaut.
+   Un rayon absent de l'ordre du magasin (créé depuis) se place à la fin. */
+function catsFor(shopId){
+  const cats = liveCats(), s = shopId && liveShops().find(x=>x.id===shopId), co = s && s.co;
+  if(!co || typeof co !== "object") return cats;
+  const rank = c => typeof co[c.id] === "number" ? co[c.id] : 1e6;
+  return cats.map((c,n)=>[c,n]).sort((a,b)=>rank(a[0])-rank(b[0]) || a[1]-b[1]).map(x=>x[0]);
+}
 if(prefs.shop && !curShop()) prefs.shop = "";
 
 function commit(){ saveDoc(); render(); scheduleSync(); }
@@ -515,7 +523,7 @@ function itemRow(i, q){
 }
 function render(){
   if(prefs.shop && !curShop()){ prefs.shop = ""; savePrefs(); }
-  const cats = liveCats(), all = liveItems();
+  const cats = catsFor(prefs.shop), all = liveItems();
   const q = norm($("addInput").value);
   const qk = keyOf($("addInput").value);
   const catIds = new Set(cats.map(c=>c.id));
@@ -732,7 +740,7 @@ const ACTIONS = {
   guide: ()=>openGuide(0),
   feedback: openFeedback,
   activity: ()=>{ renderActivity(); open("activityModal"); },
-  cats: ()=>{ renderCats(); open("catsModal"); },
+  cats: ()=>{ catsShop = prefs.shop || ""; renderCats(); open("catsModal"); },
   setName: askName,
   updateApp: updateApp,
 };
@@ -804,7 +812,7 @@ function renderCatalog(){
   }
   if($("catalogSearch").value !== catalogQ) $("catalogSearch").value = catalogQ;
   const qq = norm(catalogQ);
-  const cats = liveCats(), catIds = new Set(cats.map(c=>c.id));
+  const cats = catsFor(prefs.shop), catIds = new Set(cats.map(c=>c.id));
   const catOf = i => catIds.has(i.cat) ? i.cat : (cats[0] && cats[0].id);
   const items = liveItems().filter(i=>!qq || norm(i.t).includes(qq));
   let h = "", any = false;
@@ -983,23 +991,34 @@ $("pasteGo").onclick = ()=>{
 /* Rayons : ordre, nom, ajout, suppression.
    Un rayon renommé garde sa clé k (rangement automatique) pour ne pas recréer l'ancien. */
 const defKeyOf = c => c.k || (CAT_DEFS.find(d=>d.m.test(norm(c.name)))||{}).k || "";
+let catsShop = "";
 function renderCats(){
-  const cats = liveCats(), cnt = id => liveItems().filter(i=>i.cat===id).length;
-  let h = `<h2>🗂 Rayons</h2><p class="count">Range-les dans l'ordre où tu les croises en magasin : la liste suivra cet ordre (pour tous ceux qui partagent la liste).</p>`;
+  const shops = liveShops();
+  if(catsShop && !shops.some(x=>x.id===catsShop)) catsShop = "";
+  const s = shops.find(x=>x.id===catsShop), cats = catsFor(catsShop), cnt = id => liveItems().filter(i=>i.cat===id).length;
+  let h = `<h2>🗂 Rayons</h2><p class="count">Range-les dans l'ordre où tu les croises : chaque magasin peut avoir le sien. Partagé avec ceux qui ont la liste.</p>`;
+  h += `<div class="chips" style="padding-bottom:6px">${[{id:"", emoji:"📋", name:"Par défaut"}, ...shops].map(x=>`<button class="chip ${x.id===catsShop?"go":""}" data-cshop="${esc(x.id)}">${esc(x.emoji||"🏪")} ${esc(x.name)}${x.co?" ·&nbsp;perso":""}</button>`).join("")}</div>`;
+  h += `<p class="count">${s ? (s.co ? `Ordre propre à « ${esc(s.name)} ».` : `« ${esc(s.name)} » suit l'ordre par défaut : bouge un rayon pour lui donner son propre ordre.`) : "Ordre utilisé pour « tous les magasins » et les magasins sans ordre propre."}</p>`;
   h += cats.map((c,k)=>`<div class="srow"><span class="t">${esc(c.emoji||"🛒")} ${esc(c.name)}<small>${plural(cnt(c.id),"article")}</small></span>
     <button data-cup="${esc(c.id)}" ${k?"":"disabled"} aria-label="Monter">↑</button><button data-cdown="${esc(c.id)}" ${k<cats.length-1?"":"disabled"} aria-label="Descendre">↓</button><button data-cedit="${esc(c.id)}" aria-label="Renommer">✎</button></div>`).join("");
-  h += `<button class="row" id="addCatBtn" style="margin-top:10px">➕ Ajouter un rayon</button><button class="close ghost" data-close>Fermer</button>`;
+  if(s && s.co) h += `<button class="row" id="resetCo" style="margin-top:10px">↩️ Reprendre l'ordre par défaut pour « ${esc(s.name)} »</button>`;
+  h += `<button class="row" id="addCatBtn" style="margin-top:10px">➕ Ajouter un rayon<small>Le nom, l'emoji et les rayons eux-mêmes sont communs à tous les magasins</small></button><button class="close ghost" data-close>Fermer</button>`;
   $("catsSheet").innerHTML = h;
 }
 function moveCat(id, dir){
-  const cats = liveCats(), k = cats.findIndex(c=>c.id===id), j = k + dir;
+  const cats = catsFor(catsShop), k = cats.findIndex(c=>c.id===id), j = k + dir;
   if(k < 0 || j < 0 || j >= cats.length) return;
   [cats[k], cats[j]] = [cats[j], cats[k]];
-  cats.forEach((c,n)=>{ if(c.o !== n) touch(c,{o:n}); });
+  const s = catsShop && liveShops().find(x=>x.id===catsShop);
+  if(s){ const co = {}; cats.forEach((c,n)=>co[c.id]=n); touch(s,{co}); }
+  else cats.forEach((c,n)=>{ if(c.o !== n) touch(c,{o:n}); });
   commit(); renderCats();
 }
 $("catsSheet").addEventListener("click", e=>{
   const up = e.target.closest("[data-cup]"), dn = e.target.closest("[data-cdown]"), ed = e.target.closest("[data-cedit]");
+  const cs = e.target.closest("[data-cshop]");
+  if(cs){ catsShop = cs.dataset.cshop; return renderCats(); }
+  if(e.target.closest("#resetCo")){ const sh = liveShops().find(x=>x.id===catsShop); if(sh) withUndo(`« ${sh.name} » reprend l'ordre par défaut`, ()=>touch(sh,{co:null})); return renderCats(); }
   if(up) return moveCat(up.dataset.cup, -1);
   if(dn) return moveCat(dn.dataset.cdown, 1);
   if(e.target.closest("#addCatBtn")){
@@ -1051,6 +1070,8 @@ $("importBackup").onclick = ()=>{
       const ex = doc.shops.find(x=>x.id===id); const v = {id, emoji:s.emoji, name:s.name, o:s.o};
       if(ex) touch(ex, {...v, del:false}); else doc.shops.push({...v, u:now()}); });
     incoming.cats.filter(c=>!c.del).forEach(c=>{ const id=newId("c"); map[c.id]=id; doc.cats.push({id, emoji:c.emoji, name:c.name, o:c.o, u:now()}); });
+    incoming.shops.filter(s=>!s.del && s.co && typeof s.co === "object").forEach(s=>{ const sh = doc.shops.find(x=>x.id===smap[s.id]); if(!sh) return;
+      const co = {}; for(const [cid,n] of Object.entries(s.co)) if(map[cid]) co[map[cid]] = n; touch(sh,{co}); });
     incoming.items.filter(i=>!i.del).forEach(i=>doc.items.push({...i, id:newId("i"), cat:map[i.cat]||"", shop:smap[i.shop]||"", u:now()}));
   });
 };
@@ -1153,7 +1174,7 @@ $("welcomeSheet").addEventListener("click", e=>{
 const GUIDE = [
   {e:"✍️", h:"Ajouter et chercher", p:`<ul><li>Tape un article en haut puis <b>+</b> : il est rangé tout seul dans le bon rayon.</li><li>Le même champ <b>cherche</b> dans la liste et dans tout ce que tu as déjà acheté.</li><li>Les doublons sont détectés.</li></ul>`},
   {e:"✅", h:"En magasin", p:`<ul><li><b>Coche</b> ce que tu prends : ça descend en bas du rayon.</li><li><b>✎</b> sur un article : renommer, changer de rayon, <b>⚠️ pas trouvé</b>, <b>⭐ régulier</b>.</li><li>À la caisse : <b>✅ Terminer la course</b>. Rien n'est perdu : tout part au <b>📚 Catalogue</b>.</li><li>🔆 Menu ⋯ : garder l'écran allumé.</li></ul>`},
-  {e:"⭐", h:"La prochaine fois", p:`<ul><li><b>⭐ Réguliers</b> : remet en un tap le lait, le pain, les œufs…</li><li><b>💡 À racheter</b> : l'appli apprend votre rythme et propose ce qui manque sûrement.</li><li><b>📚 Catalogue</b> : tout ce qui a déjà été acheté, pour le remettre en un tap.</li><li>Touche le <b>titre</b> en haut pour choisir le magasin (supermarché, bio…).</li><li>Menu ⋯ → <b>🗂 Rayons</b> : range-les dans l'ordre de ton magasin.</li></ul>`},
+  {e:"⭐", h:"La prochaine fois", p:`<ul><li><b>⭐ Réguliers</b> : remet en un tap le lait, le pain, les œufs…</li><li><b>💡 À racheter</b> : l'appli apprend votre rythme et propose ce qui manque sûrement.</li><li><b>📚 Catalogue</b> : tout ce qui a déjà été acheté, pour le remettre en un tap.</li><li>Touche le <b>titre</b> en haut pour choisir le magasin (supermarché, bio…).</li><li>Menu ⋯ → <b>🗂 Rayons</b> : range-les dans l'ordre de chaque magasin.</li></ul>`},
   {e:"👥", h:"À plusieurs", p:`<ul><li><b>👥</b> → « Créer la liste partagée », puis envoie le lien (WhatsApp, SMS…).</li><li>Tout le monde coche la même liste, en direct. <b>🔔</b> montre qui a changé quoi.</li><li>Astuce : ouvre le lien puis « <b>Ajouter à l'écran d'accueil</b> » (bouton Partager sur iPhone, menu ⋮ sur Android).</li></ul>`},
 ];
 let guideStep = 0, guideNext = null;

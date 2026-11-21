@@ -8,7 +8,7 @@ Journal de passation entre sessions Claude. **À lire en début de session, à m
 - Flux git : développer sur la branche de session, pousser sur cette branche **et** sur `main` (GitHub Pages publie `main`). Toujours bumper `APP_VERSION`.
 
 ## État actuel (2026-11-21)
-- En ligne : https://yogeek.github.io/liste-courses/ — `APP_VERSION = "2026-11-21.3"`, SW `courses-v8`.
+- En ligne : https://yogeek.github.io/liste-courses/ — `APP_VERSION = "2026-11-21.4"`, SW `courses-v8`.
 - Partage via Firebase RTDB (`DB_URL` dans `index.html`), temps réel SSE + polling 15 s. Un lien de partage familial est déjà utilisé en production : **ne jamais casser le format `#l=<id>` ni le schéma du doc** (sinon prévoir une migration dans `normalize`/`cleanX`).
 - Historique git réécrit le 2026-11-21 pour purger une liste personnelle (commit unique `7089723`). Si suppression totale voulue : demande au support GitHub (« Remove sensitive data ») pour les anciens SHA `30a4c07`, `5e392f1`, `5c115fe` — laissé à l'utilisateur.
 
@@ -33,6 +33,7 @@ Journal de passation entre sessions Claude. **À lire en début de session, à m
   - Recherche « ??? » affichait tout ; emojis de rayons/magasins (données partagées) non échappés dans le HTML.
 
 - **Gérer les rayons** (v`.3`, demandé par le propriétaire) : Menu ⋯ → 🗂 Rayons : monter/descendre (renumérote `o`), renommer + emoji, ajouter, supprimer (articles → « Divers »). Un rayon renommé garde sa clé de rangement auto dans le champ optionnel `k` des rayons (`catForKey` cherche d'abord `k`, sinon le nom), sinon l'ancien rayon serait recréé au prochain ajout.
+- **Ordre des rayons par magasin** (v`.4`) : dans 🗂 Rayons, onglets « Par défaut » + un par magasin (ouvert sur le magasin courant). Un magasin réglé porte `co = {idRayon: rang}` (champ optionnel du magasin, absent = ordre par défaut, ↩️ pour y revenir) ; `catsFor(shopId)` donne l'ordre utilisé par la liste et le catalogue ; un rayon absent de `co` va à la fin. Nom/emoji/ajout/suppression restent communs à tous les magasins.
 
 ## À vérifier / en attente côté utilisateur
 - Passer **Settings → Pages → Source** sur « GitHub Actions » (sinon Pages continue de publier toute la branche), puis relancer le workflow « Publication de l'appli » si son premier passage a échoué. Vérifier ensuite que `/HANDOFF.md` renvoie 404 et que l'appli marche.
@@ -40,7 +41,7 @@ Journal de passation entre sessions Claude. **À lire en début de session, à m
 - Retours des familles testeuses (lire `/avis` dans la console Firebase).
 
 ## Idées proposées, non lancées (attendre son feu vert) — priorités revues le 2026-11-21
-1. ~~Gérer les rayons~~ : fait (v`.3`). Suite possible : ordre des rayons **par magasin** (aujourd'hui un seul ordre pour tous les magasins) ; « ordre appris » seulement si l'ordre manuel ne suffit pas.
+1. ~~Gérer les rayons~~ et ~~ordre par magasin~~ : faits (v`.3`, v`.4`). « Ordre appris » seulement si l'ordre manuel ne suffit pas.
 2. **Recherche sur tous les magasins** avec badge du magasin : quasi-bug actuel (en vue « Bio », taper « lait » dit « Déjà sur la liste » mais ne le montre pas).
 3. **Filets de sécurité** : copie locale avant de rejoindre une liste (rejoindre remplace la liste de l'appareil) ; règle Firebase `newData.exists()` pour qu'aucune écriture ne puisse effacer une liste ; à terme, écriture conditionnelle (ETag Firebase) pour fermer la petite fenêtre où deux envois simultanés s'écrasent (aujourd'hui rattrapée à la synchro suivante).
 4. Lot 2 restant : « qui prend quoi » → attendre une demande des familles. « Mode magasin » → probablement superflu (👁 masquer + replier les rayons existent) ; à réévaluer avec les retours.
@@ -53,6 +54,7 @@ Journal de passation entre sessions Claude. **À lire en début de session, à m
 - Toute modification hors `touch()` casse la fusion entre appareils.
 
 ## Journal des sessions
+- **2026-11-21 (ordre par magasin)** : ordre des rayons propre à chaque magasin.
 - **2026-11-21 (rayons)** : écran 🗂 Rayons (ordre, noms, ajout, suppression).
 - **2026-11-21 (revue)** : revue complète, 9 bugs corrigés (voir « Fait »), priorités revues ; tests Playwright avec un faux Firebase qui trie les clés.
 - **2026-11-20 → 21** : création du projet, lots 0–1, Firebase, activité, mise à jour auto, ouverture multi-familles, doublons, purge de l'historique, CLAUDE.md/HANDOFF.md, publication de l'appli seule via Actions.
