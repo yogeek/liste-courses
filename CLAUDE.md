@@ -2,6 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+**Start every session by reading [`HANDOFF.md`](HANDOFF.md)** (current state, pending items, ideas awaiting the owner's go-ahead, session log) and update it before ending a session that changed anything.
+
 ## Project
 
 "Mes courses": a French-language shared shopping-list PWA. The whole app is **one static `index.html`** (vanilla JS + CSS, no dependencies, no build step), served by GitHub Pages from `main` at https://yogeek.github.io/liste-courses/. Shared lists live in a Firebase Realtime Database (REST + SSE, no SDK). UI text, comments and commit messages are in French; keep it that way.
