@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-"Mes courses": a French-language shared shopping-list PWA. The whole app is **one static `index.html`** (vanilla JS + CSS, no dependencies, no build step), served by GitHub Pages from `main` at https://yogeek.github.io/liste-courses/. Shared lists live in a Firebase Realtime Database (REST + SSE, no SDK). UI text, comments and commit messages are in French; keep it that way.
+"Mes courses": a French-language shared shopping-list PWA. The whole app is **one static `index.html`** (vanilla JS + CSS, no dependencies, no build step), deployed to GitHub Pages from `main` by `.github/workflows/pages.yml` (which publishes **only** the app files — add any new asset to its `cp` line) at https://yogeek.github.io/liste-courses/. Shared lists live in a Firebase Realtime Database (REST + SSE, no SDK). UI text, comments and commit messages are in French; keep it that way.
 
 Other files: `sw.js` (service worker), `manifest.json` + icons (PWA), `.nojekyll`, `README.md` (user-facing features + the Firebase rules JSON).
 

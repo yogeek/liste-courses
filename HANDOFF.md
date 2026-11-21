@@ -21,8 +21,10 @@ Journal de passation entre sessions Claude. **À lire en début de session, à m
 - Ouverture à d'autres familles : accueil neutre (coller / exemple / vide / rejoindre), guide 4 étapes, 💬 avis → Firebase `/avis`.
 - Doublons souples (quantités, précisions, fautes de frappe) dans l'ajout et l'aperçu du collage, avec choix par ligne.
 - `CLAUDE.md` + ce fichier.
+- Publication Pages par GitHub Actions (`.github/workflows/pages.yml`) : seuls les fichiers de l'appli sont en ligne.
 
 ## À vérifier / en attente côté utilisateur
+- Passer **Settings → Pages → Source** sur « GitHub Actions » (sinon Pages continue de publier toute la branche), puis relancer le workflow « Publication de l'appli » si son premier passage a échoué. Vérifier ensuite que `/HANDOFF.md` renvoie 404 et que l'appli marche.
 - Les **règles Firebase** du README (avec le chemin `avis`) doivent être publiées par l'utilisateur dans la console. Symptôme si mal collées : « ⚠️ accès refusé (règles) » en haut à droite → lui demander ce qu'il a collé.
 - Retours des familles testeuses (lire `/avis` dans la console Firebase).
 
@@ -38,4 +40,4 @@ Journal de passation entre sessions Claude. **À lire en début de session, à m
 - Toute modification hors `touch()` casse la fusion entre appareils.
 
 ## Journal des sessions
-- **2026-11-20 → 21** : création du projet, lots 0–1, Firebase, activité, mise à jour auto, ouverture multi-familles, doublons, purge de l'historique, CLAUDE.md/HANDOFF.md.
+- **2026-11-20 → 21** : création du projet, lots 0–1, Firebase, activité, mise à jour auto, ouverture multi-familles, doublons, purge de l'historique, CLAUDE.md/HANDOFF.md, publication de l'appli seule via Actions.
