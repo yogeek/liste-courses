@@ -55,7 +55,14 @@ main{padding:10px 12px}
 .banner button.x{background:none;color:var(--muted);padding:8px}
 .cat{background:var(--card);border:1px solid var(--line);border-radius:14px;margin-bottom:10px;overflow:hidden}
 .cat.alldone{opacity:.55}
-.cat-h{display:flex;align-items:center;gap:8px;padding:12px 14px;font-weight:700;cursor:pointer;user-select:none;-webkit-user-select:none}
+.cat-h{display:flex;align-items:center;gap:8px;padding:12px 14px;font-weight:700;cursor:pointer;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.cat.lift{box-shadow:0 0 0 2px var(--accent);transition:box-shadow .15s}
+body.reorder .cat .items{display:none}
+body.reorder .cat .chev{visibility:hidden}
+body.reorder .cat{transition:transform .12s}
+body.reorder .cat.drag{transition:none;position:relative;z-index:15;box-shadow:0 8px 24px rgba(0,0,0,.25),0 0 0 2px var(--accent);opacity:1}
+body.reorder .cat .cat-h::before{content:"☰";color:var(--muted);margin-right:2px}
+body.reorder .sec,body.reorder .cat.catalog{display:none}
 .cat-h .n{margin-left:auto;font-weight:500;font-size:13px;color:var(--muted)}
 .cat-h .chev{transition:transform .15s;color:var(--muted)}
 .cat.closed .chev{transform:rotate(-90deg)}
@@ -168,7 +175,7 @@ mark{background:var(--hl);color:inherit;border-radius:3px}
     <button class="row" id="finishBtn">✅ Terminer la course<small>Ce qui est pris retourne au catalogue, ce qui n'a pas été trouvé reste sur la liste</small></button>
     <button class="row" id="pasteBtn">📋 Coller une liste<small>Texte libre ou « [ ] article » : rangé automatiquement par rayon</small></button>
     <button class="row" id="catalogBtn">📚 Catalogue<small>Tous les articles déjà connus, pour les remettre en un tap</small></button>
-    <button class="row" data-act="cats">🗂 Rayons : ordre et noms<small>Les mettre dans l'ordre de ton magasin, renommer, ajouter</small></button>
+    <button class="row" data-act="cats">🗂 Rayons : ordre et noms<small>Astuce : dans la liste, garde le doigt appuyé sur un rayon puis glisse-le</small></button>
     <button class="row" id="expandAll">📂 Tout déplier / replier les rayons</button>
     <button class="row" id="wakeBtn">🔆 Garder l'écran allumé<small id="wakeState">Pratique en magasin</small></button>
     <button class="row" data-act="guide">❓ Comment ça marche<small>Le guide en 4 étapes</small></button>
@@ -185,6 +192,7 @@ mark{background:var(--hl);color:inherit;border-radius:3px}
 <div class="modal" id="welcomeModal"><div class="sheet" id="welcomeSheet"></div></div>
 <div class="modal" id="guideModal"><div class="sheet" id="guideSheet"></div></div>
 <div class="modal" id="feedbackModal"><div class="sheet" id="feedbackSheet"></div></div>
+<div class="modal" id="catMenuModal"><div class="sheet" id="catMenuSheet"></div></div>
 <div class="modal" id="catsModal"><div class="sheet" id="catsSheet"></div></div>
 <div class="modal" id="activityModal"><div class="sheet" id="activitySheet"></div></div>
 
@@ -230,7 +238,7 @@ mark{background:var(--hl);color:inherit;border-radius:3px}
 
 <script>
 /* Version de l'appli : à changer à chaque mise en ligne (affiche « Nouvelle version » chez les autres). */
-const APP_VERSION = "2026-11-21.4";
+const APP_VERSION = "2026-11-21.5";
 
 /* ====== LISTE D'EXEMPLE (proposée au premier lancement) : [emoji, rayon, [articles]] ====== */
 const EXAMPLE = [
@@ -513,7 +521,7 @@ const suggestions = () => liveItems().filter(i=>!isNeed(i) && inShop(i)).map(i=>
 const regularsMissing = () => liveItems().filter(i=>i.fav && !isNeed(i) && inShop(i));
 
 /* ---------- Rendu ---------- */
-let flashId = null, flashIds = new Set();
+let flashId = null, flashIds = new Set(), drag = null;
 function itemRow(i, q){
   const st = i.done ? "done" : i.miss ? "miss" : "";
   const sh = !prefs.shop && i.shop && i.shop !== mainShop() ? esc((liveShops().find(s=>s.id===i.shop)||{}).emoji||"") : "";
@@ -522,6 +530,7 @@ function itemRow(i, q){
     <button class="edit" data-edit="${i.id}" aria-label="Modifier">✎</button></div>`;
 }
 function render(){
+  if(drag){ pendingRender = true; return; } // ne pas casser un déplacement de rayon en cours
   if(prefs.shop && !curShop()){ prefs.shop = ""; savePrefs(); }
   const cats = catsFor(prefs.shop), all = liveItems();
   const q = norm($("addInput").value);
@@ -661,6 +670,7 @@ function setDone(it, v){
 function putBack(it){ touch(it, {need:true, done:false, miss:false}); flashId = it.id; prefs.closed[it.cat] = false; savePrefs(); }
 
 $("list").addEventListener("click", e=>{
+  if(swallowClick){ swallowClick = false; return; }
   const t = e.target.closest("[data-toggle]");
   if(t){ if(norm($("addInput").value)) return; prefs.closed[t.dataset.toggle] = !prefs.closed[t.dataset.toggle]; savePrefs(); render(); return; }
   const ed = e.target.closest("[data-edit]");
@@ -996,7 +1006,7 @@ function renderCats(){
   const shops = liveShops();
   if(catsShop && !shops.some(x=>x.id===catsShop)) catsShop = "";
   const s = shops.find(x=>x.id===catsShop), cats = catsFor(catsShop), cnt = id => liveItems().filter(i=>i.cat===id).length;
-  let h = `<h2>🗂 Rayons</h2><p class="count">Range-les dans l'ordre où tu les croises : chaque magasin peut avoir le sien. Partagé avec ceux qui ont la liste.</p>`;
+  let h = `<h2>🗂 Rayons</h2><p class="count">Range-les dans l'ordre où tu les croises : chaque magasin peut avoir le sien. Partagé avec ceux qui ont la liste. Plus rapide : dans la liste, garde le doigt appuyé sur un rayon et glisse-le.</p>`;
   h += `<div class="chips" style="padding-bottom:6px">${[{id:"", emoji:"📋", name:"Par défaut"}, ...shops].map(x=>`<button class="chip ${x.id===catsShop?"go":""}" data-cshop="${esc(x.id)}">${esc(x.emoji||"🏪")} ${esc(x.name)}${x.co?" ·&nbsp;perso":""}</button>`).join("")}</div>`;
   h += `<p class="count">${s ? (s.co ? `Ordre propre à « ${esc(s.name)} ».` : `« ${esc(s.name)} » suit l'ordre par défaut : bouge un rayon pour lui donner son propre ordre.`) : "Ordre utilisé pour « tous les magasins » et les magasins sans ordre propre."}</p>`;
   h += cats.map((c,k)=>`<div class="srow"><span class="t">${esc(c.emoji||"🛒")} ${esc(c.name)}<small>${plural(cnt(c.id),"article")}</small></span>
@@ -1009,9 +1019,7 @@ function moveCat(id, dir){
   const cats = catsFor(catsShop), k = cats.findIndex(c=>c.id===id), j = k + dir;
   if(k < 0 || j < 0 || j >= cats.length) return;
   [cats[k], cats[j]] = [cats[j], cats[k]];
-  const s = catsShop && liveShops().find(x=>x.id===catsShop);
-  if(s){ const co = {}; cats.forEach((c,n)=>co[c.id]=n); touch(s,{co}); }
-  else cats.forEach((c,n)=>{ if(c.o !== n) touch(c,{o:n}); });
+  setCatOrder(catsShop, cats.map(c=>c.id));
   commit(); renderCats();
 }
 $("catsSheet").addEventListener("click", e=>{
@@ -1027,26 +1035,127 @@ $("catsSheet").addEventListener("click", e=>{
     withUndo(`Rayon « ${n} » ajouté`, ()=>{ doc.cats.push(stamp({id:newId("c"), emoji:em, name:n.slice(0,40), o:liveCats().length, u:now()})); });
     return renderCats();
   }
-  if(ed){
-    const c = doc.cats.find(x=>x.id===ed.dataset.cedit); if(!c) return;
-    const n = prompt("Nouveau nom du rayon (laisser vide pour le supprimer) :", c.name); if(n===null) return;
-    if(!n.trim()){
-      if(liveCats().length <= 1) return alert("Il faut garder au moins un rayon.");
-      const its = liveItems().filter(i=>i.cat===c.id);
-      if(!confirm(`Supprimer le rayon « ${c.name} » ?${its.length ? ` Ses ${plural(its.length,"article")} passent dans « Divers ».` : ""}`)) return;
-      withUndo("Rayon supprimé", ()=>{
-        touch(c,{del:true});
-        const dv = catForKey("dv", true); if(!dv.by) stamp(dv);
-        its.forEach(i=>touch(i,{cat:dv.id}));
-      });
-    } else {
-      const em = prompt("Emoji du rayon :", c.emoji||"🛒"); if(em===null) return;
-      const k = defKeyOf(c);
-      withUndo("Rayon renommé", ()=>touch(c, {name:n.trim().slice(0,40), emoji:[...(em.trim()||"🛒")].slice(0,4).join(""), ...(k ? {k} : {})}));
-    }
-    renderCats();
-  }
+  if(ed){ editCat(ed.dataset.cedit); renderCats(); }
 });
+function editCat(id){
+  const c = doc.cats.find(x=>x.id===id); if(!c) return;
+  const n = prompt("Nouveau nom du rayon (laisser vide pour le supprimer) :", c.name); if(n===null) return;
+  if(!n.trim()) return deleteCat(id);
+  const em = prompt("Emoji du rayon :", c.emoji||"🛒"); if(em===null) return;
+  const k = defKeyOf(c);
+  withUndo("Rayon renommé", ()=>touch(c, {name:n.trim().slice(0,40), emoji:[...(em.trim()||"🛒")].slice(0,4).join(""), ...(k ? {k} : {})}));
+}
+function deleteCat(id){
+  const c = doc.cats.find(x=>x.id===id); if(!c) return;
+  if(liveCats().length <= 1) return alert("Il faut garder au moins un rayon.");
+  const its = liveItems().filter(i=>i.cat===c.id);
+  if(!confirm(`Supprimer le rayon « ${c.name} » ?${its.length ? ` Ses ${plural(its.length,"article")} passent dans « Divers ».` : ""}`)) return;
+  withUndo("Rayon supprimé", ()=>{
+    touch(c,{del:true});
+    const dv = catForKey("dv", true); if(!dv.by) stamp(dv);
+    its.forEach(i=>touch(i,{cat:dv.id}));
+  });
+}
+/* Applique un nouvel ordre (liste complète d'ids) au magasin donné, ou à l'ordre par défaut. */
+function setCatOrder(shopId, ids){
+  const s = shopId && liveShops().find(x=>x.id===shopId);
+  if(s){ const co = {}; ids.forEach((id,n)=>co[id]=n); touch(s,{co}); }
+  else ids.forEach((id,n)=>{ const c = doc.cats.find(x=>x.id===id); if(c && c.o !== n) touch(c,{o:n}); });
+}
+
+/* Options d'un rayon (appui long sans glisser) */
+function openCatMenu(id){
+  const c = doc.cats.find(x=>x.id===id); if(!c) return;
+  const s = curShop();
+  $("catMenuSheet").innerHTML = `<h2>${esc(c.emoji||"🛒")} ${esc(c.name)}</h2>
+    <p class="count">Astuce : garde le doigt appuyé sur un rayon puis glisse-le pour changer l'ordre${s ? ` (dans « ${esc(s.name)} »)` : ""}.</p>
+    <button class="row" id="cmEdit">✎ Renommer / changer l'emoji</button>
+    <button class="row danger" id="cmDel">🗑 Supprimer ce rayon<small>Ses articles passent dans « Divers »</small></button>
+    <button class="row" data-act="cats">🗂 Tous les rayons<small>Ordre par magasin, ajouter un rayon</small></button>
+    <button class="close ghost" data-close>Fermer</button>`;
+  $("cmEdit").onclick = ()=>{ closeAll(); editCat(id); };
+  $("cmDel").onclick = ()=>{ closeAll(); deleteCat(id); };
+  open("catMenuModal");
+}
+
+/* Glisser un rayon dans la liste : appui long (~0,45 s) sur son titre, puis on glisse.
+   Pendant le glisser, les rayons sont repliés pour tous tenir à l'écran. */
+let lp = null, swallowClick = false;
+const pt = e => e.touches ? e.touches[0] || e.changedTouches[0] : e;
+function lpStart(e){
+  if(drag || lp || norm($("addInput").value) || (e.button !== undefined && e.button !== 0)) return;
+  const h = e.target.closest(".cat-h[data-toggle]"); if(!h) return;
+  const p = pt(e);
+  lp = {h, sec:h.closest(".cat"), id:h.dataset.toggle, x:p.clientX, y:p.clientY, armed:false};
+  lp.t = setTimeout(()=>{ if(!lp) return; lp.armed = true; lp.sec.classList.add("lift"); if(navigator.vibrate) try{ navigator.vibrate(15); }catch(_){} }, 450);
+}
+function lpMove(e){
+  if(drag){ e.preventDefault(); dragMove(pt(e).clientY); return; }
+  if(!lp) return;
+  const p = pt(e);
+  if(!lp.armed){ if(Math.abs(p.clientX-lp.x) > 10 || Math.abs(p.clientY-lp.y) > 10){ clearTimeout(lp.t); lp = null; } return; }
+  e.preventDefault();
+  if(Math.abs(p.clientY-lp.y) > 6) dragBegin(p.clientY);
+}
+function lpEnd(e){
+  if(drag){ dragEnd(); return; }
+  if(!lp) return;
+  clearTimeout(lp.t);
+  const l = lp; lp = null;
+  if(l.armed){ l.sec.classList.remove("lift"); swallowClick = true; setTimeout(()=>swallowClick=false, 400); if(e.cancelable) e.preventDefault(); openCatMenu(l.id); }
+}
+function dragBegin(y){
+  const l = lp; lp = null;
+  document.body.classList.add("reorder");
+  /* les autres rayons se replient : on fait défiler pour garder celui-ci sous le doigt */
+  const a = l.sec.getBoundingClientRect();
+  window.scrollBy(0, a.top + a.height/2 - y);
+  const r = l.sec.getBoundingClientRect();
+  l.sec.classList.add("drag");
+  drag = {sec:l.sec, id:l.id, grab:r.height/2, y, scroll:null};
+  drag.scroll = setInterval(()=>{ const top = document.querySelector("header").getBoundingClientRect().bottom;
+    if(drag.y < top + 50) { window.scrollBy(0,-12); dragMove(drag.y); } else if(drag.y > innerHeight - 50){ window.scrollBy(0,12); dragMove(drag.y); } }, 30);
+  dragMove(y);
+}
+function dragMove(y){
+  drag.y = y;
+  const sec = drag.sec, list = $("list");
+  sec.style.transform = "";
+  const others = [...list.querySelectorAll("section.cat:not(.catalog)")].filter(x=>x!==sec);
+  let target = null;
+  for(const o of others){ const r = o.getBoundingClientRect(); if(y < r.top + r.height/2){ target = o; break; } }
+  if(target){ if(sec.nextElementSibling !== target) list.insertBefore(sec, target); }
+  else { const last = others[others.length-1]; if(last && last.nextElementSibling !== sec) last.after(sec); }
+  const r = sec.getBoundingClientRect();
+  sec.style.transform = `translateY(${y - drag.grab - r.top}px)`;
+}
+function dragEnd(){
+  const d = drag; drag = null; clearInterval(d.scroll);
+  d.sec.style.transform = ""; d.sec.classList.remove("drag","lift");
+  document.body.classList.remove("reorder");
+  swallowClick = true; setTimeout(()=>swallowClick=false, 400);
+  /* ordre visible → ordre complet : le rayon déplacé se place juste avant son nouveau voisin du dessous */
+  const vis = [...$("list").querySelectorAll("section.cat:not(.catalog) .cat-h[data-toggle]")].map(h=>h.dataset.toggle);
+  const full = catsFor(prefs.shop).map(c=>c.id).filter(id=>id!==d.id);
+  const k = vis.indexOf(d.id), next = vis[k+1], prev = vis[k-1];
+  if(next) full.splice(full.indexOf(next), 0, d.id);
+  else if(prev) full.splice(full.indexOf(prev)+1, 0, d.id);
+  else full.push(d.id);
+  const old = catsFor(prefs.shop).map(c=>c.id);
+  pendingRender = false;
+  if(full.join() === old.join()){ render(); return; }
+  const s = curShop();
+  withUndo(s ? `Ordre des rayons de « ${s.name} » modifié` : "Ordre des rayons modifié", ()=>setCatOrder(prefs.shop, full));
+}
+const L = $("list");
+L.addEventListener("touchstart", lpStart, {passive:true});
+document.addEventListener("touchmove", lpMove, {passive:false});
+document.addEventListener("touchend", lpEnd);
+document.addEventListener("touchcancel", e=>{ if(lp){ clearTimeout(lp.t); lp.sec.classList.remove("lift"); lp = null; } if(drag) dragEnd(); });
+L.addEventListener("mousedown", e=>{ if(!("ontouchstart" in window)) lpStart(e); });
+document.addEventListener("mousemove", e=>{ if(lp || drag) lpMove(e); });
+document.addEventListener("mouseup", e=>{ if(lp || drag) lpEnd(e); });
+L.addEventListener("contextmenu", e=>{ if(e.target.closest(".cat-h")) e.preventDefault(); });
 
 /* Menu : divers */
 $("expandAll").onclick = ()=>{ const cats = liveCats(); const anyOpen = cats.some(c=>!prefs.closed[c.id]); cats.forEach(c=>prefs.closed[c.id]=anyOpen); savePrefs(); render(); closeAll(); };
@@ -1174,7 +1283,7 @@ $("welcomeSheet").addEventListener("click", e=>{
 const GUIDE = [
   {e:"✍️", h:"Ajouter et chercher", p:`<ul><li>Tape un article en haut puis <b>+</b> : il est rangé tout seul dans le bon rayon.</li><li>Le même champ <b>cherche</b> dans la liste et dans tout ce que tu as déjà acheté.</li><li>Les doublons sont détectés.</li></ul>`},
   {e:"✅", h:"En magasin", p:`<ul><li><b>Coche</b> ce que tu prends : ça descend en bas du rayon.</li><li><b>✎</b> sur un article : renommer, changer de rayon, <b>⚠️ pas trouvé</b>, <b>⭐ régulier</b>.</li><li>À la caisse : <b>✅ Terminer la course</b>. Rien n'est perdu : tout part au <b>📚 Catalogue</b>.</li><li>🔆 Menu ⋯ : garder l'écran allumé.</li></ul>`},
-  {e:"⭐", h:"La prochaine fois", p:`<ul><li><b>⭐ Réguliers</b> : remet en un tap le lait, le pain, les œufs…</li><li><b>💡 À racheter</b> : l'appli apprend votre rythme et propose ce qui manque sûrement.</li><li><b>📚 Catalogue</b> : tout ce qui a déjà été acheté, pour le remettre en un tap.</li><li>Touche le <b>titre</b> en haut pour choisir le magasin (supermarché, bio…).</li><li>Menu ⋯ → <b>🗂 Rayons</b> : range-les dans l'ordre de chaque magasin.</li></ul>`},
+  {e:"⭐", h:"La prochaine fois", p:`<ul><li><b>⭐ Réguliers</b> : remet en un tap le lait, le pain, les œufs…</li><li><b>💡 À racheter</b> : l'appli apprend votre rythme et propose ce qui manque sûrement.</li><li><b>📚 Catalogue</b> : tout ce qui a déjà été acheté, pour le remettre en un tap.</li><li>Touche le <b>titre</b> en haut pour choisir le magasin (supermarché, bio…).</li><li><b>Garde le doigt appuyé</b> sur un rayon puis glisse-le : range les rayons dans l'ordre de chaque magasin.</li></ul>`},
   {e:"👥", h:"À plusieurs", p:`<ul><li><b>👥</b> → « Créer la liste partagée », puis envoie le lien (WhatsApp, SMS…).</li><li>Tout le monde coche la même liste, en direct. <b>🔔</b> montre qui a changé quoi.</li><li>Astuce : ouvre le lien puis « <b>Ajouter à l'écran d'accueil</b> » (bouton Partager sur iPhone, menu ⋮ sur Android).</li></ul>`},
 ];
 let guideStep = 0, guideNext = null;

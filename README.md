@@ -2,7 +2,7 @@
 
 Appli web mobile (un seul `index.html`, sans dépendance) publiée sur GitHub Pages : https://yogeek.github.io/liste-courses/
 
-- Rayons dans l'ordre du magasin (Menu ⋯ → 🗂 Rayons : un ordre par magasin, renommer, ajouter, supprimer), cases à cocher, barre de progression
+- Rayons dans l'ordre du magasin (appui long sur un rayon puis glisser ; un ordre par magasin ; renommer, ajouter, supprimer), cases à cocher, barre de progression
 - Champ unique **ajouter / chercher** : filtre en direct, rayon deviné automatiquement, pas de doublon
 - 📚 **Catalogue** : un article acheté retourne au catalogue (« ✅ Terminer la course ») et se remet en un tap
 - ⭐ **Réguliers** : un bouton remet tous les articles habituels sur la liste
