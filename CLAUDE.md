@@ -27,7 +27,7 @@ Never put a real person's shopping list in the code (the history was rewritten o
 
 ## Architecture (index.html script)
 
-**Data model** — `doc = {cats, items, shops}`, persisted in localStorage (`courses_v2_doc`; prefs in `courses_v2_prefs`, sync id in `courses_v2_sync`, activity feed in `courses_v2_activity`; `courses_v1` is migrated by `docFromV1`). Every element carries `id`, `u` (last-modified timestamp) and optional `del` (tombstone, pruned after `TOMBSTONE_DAYS`). Items also have `t, cat, shop, need` (on the list vs. only in the catalogue), `done, miss` (pas trouvé), `fav` (régulier), `hist[]` (purchase dates, used by `prediction`), `o` (order), `by`/`dev` (author name / device id).
+**Data model** — `doc = {cats, items, shops}`, persisted in localStorage (`courses_v2_doc`; prefs in `courses_v2_prefs`, sync id in `courses_v2_sync`, activity feed in `courses_v2_activity`; `courses_v1` is migrated by `docFromV1`). Cats may carry `k` (CAT_DEFS key, kept when a rayon is renamed so auto-classification still finds it). Every element carries `id`, `u` (last-modified timestamp) and optional `del` (tombstone, pruned after `TOMBSTONE_DAYS`). Items also have `t, cat, shop, need` (on the list vs. only in the catalogue), `done, miss` (pas trouvé), `fav` (régulier), `hist[]` (purchase dates, used by `prediction`), `o` (order), `by`/`dev` (author name / device id).
 
 **Mutation rule** — always change elements through `touch(x, patch)` (stamps `u` monotonically plus `by`/`dev`), then `commit()` (save → render → scheduleSync). User actions wrap mutations in `withUndo(msg, fn)`; undo re-applies a snapshot with fresh timestamps so it wins the merge on other devices. Deletions set `del`, never splice.
 
